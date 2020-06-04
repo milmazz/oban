@@ -40,6 +40,71 @@ defmodule Oban.Config do
             timezone: "Etc/UTC",
             verbose: false
 
+  @schema [
+    circuit_backoff: [
+      type: :pos_integer,
+      doc: """
+      Number of milliseconds until queries are attempted after a database
+      error. All processes communicating with the database are equipped with circuit breakers and
+      will use this for the backoff.
+      """,
+      default: 30000
+    ],
+    dispatch_cooldown: [
+      type: :pos_integer
+    ],
+    name: [
+      type: :atom,
+      doc: """
+      Used for supervisor registration
+      """,
+      default: Oban
+    ],
+    node: [
+      type: :string,
+      default: "hello"
+    ],
+    crontab: [
+      type: :any,
+      default: []
+    ],
+    poll_interval: [
+      type: :pos_integer
+    ],
+    shutdown_grace_period: [
+      type: :pos_integer
+    ],
+    plugins: [
+      type: :any,
+      default: []
+    ],
+    queues: [
+      type: :any,
+      default: []
+    ],
+    repo: [
+      type: :any,
+      doc: """
+      Specifies the Ecto repository used to insert and retrieve jobs
+      """
+    ],
+    timezone: [
+      type: :any
+    ],
+    prefix: [
+      type: :any
+    ],
+    verbose: [
+      type: {:one_of, [false, :error, :warn, :info, :debug]},
+      doc: """
+      Determines whether queries are logged or not; overriding the repo's
+      configured log level. Either `false` to disable logging or standard log
+      level (`:error`, `:warn`, `:info`, `:debug`).
+      """,
+      default: false
+    ]
+  ]
+
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) when is_list(opts) do
     {conf, opts} = Keyword.pop(opts, :conf)
@@ -47,8 +112,15 @@ defmodule Oban.Config do
     Agent.start_link(fn -> conf end, opts)
   end
 
+  @doc """
+  Validates and create options
+
+  #{NimbleOptions.Docs.generate(@schema)}
+  """
   @spec new(Keyword.t()) :: t()
   def new(opts) when is_list(opts) do
+    NimbleOptions.validate!(opts, @schema)
+
     opts =
       opts
       |> Keyword.put_new(:node, node_name())
